@@ -25,20 +25,32 @@ namespace SmartSchool.WebAPI.Controllers
             _mapper = mapper;
             _repo = repo;
         }
-
+        
+        /// <summary>
+        /// Método responsável para retornar todos os meus alunos
+        /// </summary>
+        /// <returns></returns>
         [HttpGet]
         public IActionResult Get()
         {
             var alunos = _repo.GetAllAlunos(true);
-            return Ok(_mapper.Map<IEnumerable<AlunoPatchDto>>(alunos));
+            return Ok(_mapper.Map<IEnumerable<AlunoDto>>(alunos));
         }
 
+        /// <summary>
+        /// Método responsável por retonar apenas um único AlunoDTO.
+        /// </summary>
+        /// <returns></returns>
         [HttpGet("getRegister")]
         public IActionResult GetRegister()
         {
             return Ok(new AlunoRegistrarDto());
         }
 
+        /// <summary>
+        /// Método responsável por retonar apenas um Aluno por meio do Código ID.
+        /// </summary>
+        /// <returns></returns>
         // api/aluno/byId
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
