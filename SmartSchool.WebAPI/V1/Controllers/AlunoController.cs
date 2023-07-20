@@ -1,45 +1,63 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartSchool.WebAPI.Data;
-using SmartSchool.WebAPI.Models;
 using SmartSchool.WebAPI.V1.Dtos;
+using SmartSchool.WebAPI.Models;
+using System.Threading.Tasks;
+using SmartSchool.WebAPI.Helpers;
 
 namespace SmartSchool.WebAPI.V1.Controllers
 {
-
     /// <summary>
     /// Versão 1 do meu controlador de Alunos
     /// </summary>
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
-
     public class AlunoController : ControllerBase
     {
         public readonly IRepository _repo;
-
         private readonly IMapper _mapper;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="repo"></param>
+        /// <param name="mapper"></param>
         public AlunoController(IRepository repo, IMapper mapper)
         {
             _mapper = mapper;
             _repo = repo;
         }
-        
+
         /// <summary>
         /// Método responsável para retornar todos os meus alunos
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get([FromQuery] PageParams pageParams)
         {
-            var alunos = _repo.GetAllAlunos(true);
-            return Ok(_mapper.Map<IEnumerable<AlunoDto>>(alunos));
+            var alunos = await _repo.GetAllAlunosAsync(pageParams, true);
+
+            var alunosResult = _mapper.Map<IEnumerable<AlunoDto>>(alunos);
+
+            Response.AddPagination(alunos.CurrentPage, alunos.PageSize, alunos.TotalCount, alunos.TotalPages);
+
+            return Ok(alunosResult);
+        }
+
+        /// <summary>
+        /// Método responsável por retonar apenas um único AlunoDTO.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("ByDisciplina/{id}")]
+        public async Task<IActionResult> GetByDisciplinaId(int id)
+        {
+            var result = await _repo.GetAllAlunosByDisciplinaIdAsync(id, false);
+            return Ok(result);
         }
 
         /// <summary>
@@ -53,17 +71,18 @@ namespace SmartSchool.WebAPI.V1.Controllers
         }
 
         /// <summary>
-        /// Método responsável por retonar apenas um Aluno por meio do Código ID.
+        /// Método responsável por retonar apenas um Aluno por meio do Código ID
         /// </summary>
+        /// <param name="id"></param>
         /// <returns></returns>
-        // api/aluno/byId
+        // api/aluno
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
             var aluno = _repo.GetAlunoById(id, false);
             if (aluno == null) return BadRequest("O Aluno não foi encontrado");
 
-            var alunoDto = _mapper.Map<AlunoDto>(aluno);
+            var alunoDto = _mapper.Map<AlunoRegistrarDto>(aluno);
 
             return Ok(alunoDto);
         }
@@ -103,7 +122,7 @@ namespace SmartSchool.WebAPI.V1.Controllers
 
         // api/aluno
         [HttpPatch("{id}")]
-        public IActionResult Patch(int id, AlunoRegistrarDto model)
+        public IActionResult Patch(int id, AlunoPatchDto model)
         {
             var aluno = _repo.GetAlunoById(id);
             if (aluno == null) return BadRequest("Aluno não encontrado");
@@ -113,7 +132,26 @@ namespace SmartSchool.WebAPI.V1.Controllers
             _repo.Update(aluno);
             if (_repo.SaveChanges())
             {
-                return Created($"/api/aluno/{model.Id}", _mapper.Map<AlunoDto>(aluno));
+                return Created($"/api/aluno/{model.Id}", _mapper.Map<AlunoPatchDto>(aluno));
+            }
+
+            return BadRequest("Aluno não Atualizado");
+        }
+
+        // api/aluno/{id}/trocarEstado
+        [HttpPatch("{id}/trocarEstado")]
+        public IActionResult trocarEstado(int id, TrocaEstadoDto trocaEstado)
+        {
+            var aluno = _repo.GetAlunoById(id);
+            if (aluno == null) return BadRequest("Aluno não encontrado");
+
+            aluno.Ativo = trocaEstado.Estado;
+
+            _repo.Update(aluno);
+            if (_repo.SaveChanges())
+            {
+                var msn = aluno.Ativo ? "ativado" : "desativado";
+                return Ok(new { message = $"Aluno {msn} com sucesso!" });
             }
 
             return BadRequest("Aluno não Atualizado");
@@ -128,11 +166,10 @@ namespace SmartSchool.WebAPI.V1.Controllers
             _repo.Delete(aluno);
             if (_repo.SaveChanges())
             {
-                return Ok("Aluno Deletado");
+                return Ok("Aluno deletado");
             }
 
-            return BadRequest("Aluno não Deletado");
+            return BadRequest("Aluno não deletado");
         }
-
     }
 }
