@@ -11,6 +11,9 @@ using SmartSchool.WebAPI.V1.Dtos;
 
 namespace SmartSchool.WebAPI.V1.Controllers
 {
+    /// <summary>
+    /// Versão 1 do meu controlador de Alunos
+    /// </summary>
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
